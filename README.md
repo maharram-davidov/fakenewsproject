@@ -4,6 +4,7 @@
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-orange?logo=scikit-learn)
 ![Status](https://img.shields.io/badge/Week%201-Complete-brightgreen)
+![Status](https://img.shields.io/badge/Week%202-Complete-brightgreen)
 ![Accuracy](https://img.shields.io/badge/Accuracy-99.22%25-brightgreen)
 
 ---
@@ -22,8 +23,8 @@
 | Phase | Description | Status |
 |---|---|---|
 | **Week 1** | ML baseline pipeline (TF-IDF + LR + NB) | ✅ Done |
-| **Week 2** | Terminal CLI application | 🔜 Next |
-| **Week 3** | Streamlit web application | 📅 Planned |
+| **Week 2** | Terminal CLI application | ✅ Done |
+| **Week 3** | Streamlit web application | ✅ Done |
 | **Week 4** | Telegram bot integration | 📅 Planned |
 | **Week 5** | Google Gemini AI (explainability) | 📅 Planned |
 | **Week 6** | Google Vision API (OCR from screenshots) | 📅 Planned |
@@ -47,7 +48,8 @@ FakeNews/
 │   ├── features.py          # TF-IDF feature extraction
 │   ├── train_model.py       # Training, saving, loading models
 │   └── evaluate.py          # Metrics, confusion matrix, comparison
-├── app/                     # CLI / Web / Telegram app (coming soon)
+├── app/
+│   └── cli.py               # Week 2 — Terminal CLI application
 ├── main.py                  # Run the full pipeline
 ├── create_presentation.py   # Generate .pptx presentation
 └── requirements.txt
@@ -87,12 +89,36 @@ Place `Fake.csv` and `True.csv` inside the `data/` folder.
 python main.py
 ```
 
-### 6. Open the EDA notebook
+### 6. Launch the Web App (Week 3)
+```bash
+streamlit run app/web_app.py
+# opens at http://localhost:8501
+```
+
+### 7. Launch the Terminal CLI (Week 2)
+```bash
+# Interactive mode (default)
+python -m app.cli
+
+# Classify a single article text
+python -m app.cli --text "Breaking: Scientists confirm water on Mars..."
+
+# Fetch and classify a news URL
+python -m app.cli --url https://reuters.com/article/some-news
+
+# Batch-classify all rows in a CSV
+python -m app.cli --file data/articles.csv --col text
+
+# Use a specific model by name
+python -m app.cli --model naive_bayes
+```
+
+### 7. Open the EDA notebook
 ```bash
 jupyter notebook notebooks/week1_eda.ipynb
 ```
 
-### 7. Regenerate the presentation
+### 8. Regenerate the presentation
 ```bash
 python create_presentation.py
 ```
@@ -122,6 +148,7 @@ Raw Data → Preprocess → TF-IDF Features → Train Models → Evaluate → Sa
 - **Visualisation**: matplotlib, seaborn, wordcloud
 - **Notebook**: Jupyter
 - **Presentation**: python-pptx
+- **CLI (Week 2)**: colorama, requests, BeautifulSoup4
 - **Coming**: Streamlit, python-telegram-bot, Google Gemini API, Google Vision API
 
 ---
