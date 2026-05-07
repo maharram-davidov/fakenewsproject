@@ -1,12 +1,13 @@
 """
 app/telegram_bot.py
 ===================
-Week 7–8 — Telegram bot (python-telegram-bot).
+Week 7–10 — Telegram bot (python-telegram-bot) + optional Gemini /explain (Week 9–10).
 
-Commands: /start, /help, /check, /url, /history, /stats
+Commands: /start, /help, /check, /url, /history, /stats, /explain
 
 Env:
     TELEGRAM_BOT_TOKEN     — required (from @BotFather)
+    GEMINI_API_KEY         — optional; enables /explain (Week 9–10)
     TELEGRAM_DB_PATH       — optional SQLite path (default: data/telegram_bot.sqlite3)
     TELEGRAM_WEBHOOK_URL   — optional public base URL for webhook mode (e.g. Railway)
     TELEGRAM_WEBHOOK_PATH  — optional URL path segment (default: tg-webhook)
@@ -19,6 +20,7 @@ Run locally (polling):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import sqlite3
@@ -36,6 +38,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from src.config import BASE_DIR, MODELS_DIR
 from src.train_model import load_model, predict
+from src.gemini_helper import build_explain_prompt, generate_gemini_text
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -190,27 +193,31 @@ class BotState:
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     st: BotState = context.bot_data["state"]
+    gem = ""
+    if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+        gem = "\n/explain — Gemini explanation (reply to article or paste text)"
     await update.effective_message.reply_text(
         f"🔍 Fake News Detector — Telegram\n"
         f"Active model: {st.model_name}.pkl\n\n"
-        "I classify English news-style articles as Fake or Real using the same "
-        "model as the Streamlit app.\n\n"
-        "Send /help for commands."
+        "Commands: /help · /check · /url · /history · /stats"
+        f"{gem}\n\n"
+        "Same ML pipeline as the Streamlit app."
     )
 
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.effective_message.reply_text(
-        "Commands:\n"
-        "/start — Welcome\n"
-        "/help — This message\n"
-        "/check <article text> — classify pasted text\n"
-        "   (or reply to any message with /check to classify that message)\n"
-        "/url <https://…> — fetch page text and classify\n"
-        "/history — last 10 predictions in this chat\n"
-        "/stats — fake vs real counts for this chat\n\n"
-        "Tip: For long articles, reply to your pasted message with /check"
-    )
+    lines = [
+        "Commands:",
+        "/start — Welcome",
+        "/help — This message",
+        "/check <text> — classify text (or reply with /check)",
+        "/url <https://…> — fetch URL and classify",
+        "/history — last predictions",
+        "/stats — counts this chat",
+        "/explain — Gemini explains ML verdict (reply to article or /explain <text>)",
+        "  (needs GEMINI_API_KEY on server)",
+    ]
+    await update.effective_message.reply_text("\n".join(lines))
 
 
 async def cmd_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -314,6 +321,40 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def cmd_explain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        await update.effective_message.reply_text(
+            "Gemini not configured. Set GEMINI_API_KEY (or GOOGLE_API_KEY) on the server."
+        )
+        return
+    msg = update.effective_message
+    bot_state: BotState = context.bot_data["state"]
+    text = None
+    if msg.reply_to_message and msg.reply_to_message.text:
+        text = msg.reply_to_message.text
+    elif context.args:
+        text = " ".join(context.args)
+    if not text or not text.strip():
+        await msg.reply_text(
+            "Reply to the article message with /explain, or send /explain followed by the article text."
+        )
+        return
+    await msg.reply_chat_action(action="typing")
+    result = predict(text, bot_state.model, bot_state.vectorizer)
+    label = str(result.get("label_name") or "?").upper()
+    conf = (result.get("confidence") or 0.0) * 100
+    prompt = build_explain_prompt(text, label, conf)
+    try:
+        out = await asyncio.to_thread(generate_gemini_text, api_key, prompt)
+    except Exception as e:
+        await msg.reply_text(f"Gemini error: {e}")
+        return
+    if len(out) > 4090:
+        out = out[:4087] + "..."
+    await msg.reply_text(out)
+
+
 def main() -> None:
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -334,6 +375,7 @@ def main() -> None:
     application.add_handler(CommandHandler("url", cmd_url))
     application.add_handler(CommandHandler("history", cmd_history))
     application.add_handler(CommandHandler("stats", cmd_stats))
+    application.add_handler(CommandHandler("explain", cmd_explain))
 
     webhook_base = os.getenv("TELEGRAM_WEBHOOK_URL")
     if webhook_base:

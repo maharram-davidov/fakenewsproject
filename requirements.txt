@@ -18,5 +18,11 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 lxml==5.2.2
 
+# ── Week 9–10: Google Gemini ─────────────────────────────────────────────────────
+google-generativeai==0.8.4
+
 # ── Week 7–8: Telegram bot ─────────────────────────────────────────────────────
 python-telegram-bot==21.10
+
+# Streamlit 1.35 requires protobuf<5; pin range so pip resolves consistently
+protobuf>=3.20,<5

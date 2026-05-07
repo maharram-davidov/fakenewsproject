@@ -1,8 +1,7 @@
 """
 app/web_app.py
 ==============
-Week 6 — Streamlit UI polish (layout, typography, visual hierarchy).
-AI-Based Fake News Detection System
+Week 9–10 — Streamlit UI + Google Gemini (explainability, summaries, Q&A).
 
 Run:
     streamlit run app/web_app.py
@@ -26,7 +25,28 @@ import streamlit as st
 
 from src.train_model import load_model, predict
 from src.config import MODELS_DIR
+from src.gemini_helper import (
+    build_chat_prompt,
+    build_explain_prompt,
+    build_summarise_prompt,
+    generate_gemini_text,
+)
 
+
+def resolve_gemini_api_key():
+    """Gemini API key from env or Streamlit secrets (never logged)."""
+    k = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if k:
+        return k.strip()
+    try:
+        sec = st.secrets
+        if "GEMINI_API_KEY" in sec:
+            return str(sec["GEMINI_API_KEY"]).strip() or None
+        if "GOOGLE_API_KEY" in sec:
+            return str(sec["GOOGLE_API_KEY"]).strip() or None
+    except Exception:
+        pass
+    return None
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config  (must be the very first Streamlit call)
@@ -417,6 +437,9 @@ for key, default in [
     ("fake_count",  0),
     ("real_count",  0),
     ("last_text",   ""),
+    ("last_ml_result", None),
+    ("gemini_article_box", ""),
+    ("gemini_msgs", []),
 ]:
     if key not in st.session_state:
         st.session_state[key] = default
@@ -506,7 +529,7 @@ def _render_result(result: dict, elapsed_ms: float, conf_threshold: int):
                 <div class="metric-name">Analysis Time</div>
             </div>
             <div class="metric-box">
-                <div class="metric-val" style="color:#48CAE4">{len(st.session_state.last_text.split()):,}</div>
+                <div class="metric-val" style="color:#48CAE4">{len((st.session_state.last_text or "").split()):,}</div>
                 <div class="metric-name">Words</div>
             </div>
         </div>
@@ -535,7 +558,7 @@ with st.sidebar:
     <h2 style="color:#00B4D8; margin-bottom:4px; font-weight:800; letter-spacing:-0.02em;">
         🔍 Fake News<br>Detector</h2>
     <p style="color:#5C6D82; font-size:0.78rem; margin-top:0; line-height:1.4;">
-        AI-Based Detection · Week 6 UI</p>
+        AI-Based Detection · Weeks 6–10</p>
     """, unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -579,6 +602,12 @@ with st.sidebar:
         help="Predictions below this confidence will show a warning.",
     )
 
+    st.markdown("**Gemini (Week 9–10)**")
+    if resolve_gemini_api_key():
+        st.caption("API key OK · summaries / explain / chat enabled")
+    else:
+        st.caption("Set GEMINI_API_KEY or `.streamlit/secrets.toml`")
+
     st.markdown("<hr>", unsafe_allow_html=True)
 
     # Tips
@@ -589,11 +618,12 @@ with st.sidebar:
         3. **Batch tab** — upload a CSV with articles  
         4. **Dashboard** — see model & dataset stats  
         5. **History** — review past predictions  
+        6. **Gemini AI** — explanations, summaries, Q&A (needs API key)  
         """)
 
     st.markdown(
         '<p style="color:#334455; font-size:0.72rem; text-align:center; margin-top:22px;">'
-        'Capstone · Week 6 (UI)</p>',
+        'Capstone · Weeks 9–10 (Gemini)</p>',
         unsafe_allow_html=True,
     )
 
@@ -604,7 +634,7 @@ with st.sidebar:
 st.markdown("""
 <div class="hero-shell">
     <div class="hero-inner">
-        <div class="hero-kicker">Week 6 · Interface polish</div>
+        <div class="hero-kicker">Week 9–10 · Gemini AI layer</div>
         <h1 class="hero-title"><span class="hero-icon">🔍</span>Fake News Detector</h1>
         <p class="hero-sub">
             Paste text, fetch from a URL, or run batch CSV — English news articles work best.
@@ -614,7 +644,8 @@ st.markdown("""
             <span class="hero-chip">📝 Text</span>
             <span class="hero-chip">🔗 URL</span>
             <span class="hero-chip">📂 Batch</span>
-            <span class="hero-chip hero-chip-accent">Live predictions</span>
+            <span class="hero-chip">⚡ ML scores</span>
+            <span class="hero-chip hero-chip-accent">Gemini insights</span>
         </div>
     </div>
 </div>
@@ -624,12 +655,13 @@ st.markdown("""
 # ─────────────────────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
-tab_text, tab_url, tab_batch, tab_dash, tab_hist = st.tabs([
+tab_text, tab_url, tab_batch, tab_dash, tab_hist, tab_gem = st.tabs([
     "📝 Text Input",
     "🔗 URL Input",
     "📂 Batch CSV",
     "📊 Dashboard",
     "📋 History",
+    "✨ Gemini AI",
 ])
 
 
@@ -666,6 +698,10 @@ with tab_text:
                     result = predict(article_text, model, vectorizer)
                     ms = (time.perf_counter() - t0) * 1000
                 st.session_state.last_text = article_text
+                st.session_state.last_ml_result = {
+                    "label": str(result.get("label_name") or "").upper(),
+                    "conf_pct": (result.get("confidence") or 0.0) * 100,
+                }
                 _record(result, article_text)
                 _render_result(result, ms, conf_threshold)
 
@@ -716,6 +752,10 @@ with tab_url:
                         result = predict(text, model, vectorizer)
                         ms = (time.perf_counter() - t0) * 1000
                     st.session_state.last_text = text
+                    st.session_state.last_ml_result = {
+                        "label": str(result.get("label_name") or "").upper(),
+                        "conf_pct": (result.get("confidence") or 0.0) * 100,
+                    }
                     _record(result, text)
                     _render_result(result, ms, conf_threshold)
 
@@ -1062,13 +1102,134 @@ with tab_hist:
             )
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# TAB 6 — Gemini AI (Week 9–10)
+# ═════════════════════════════════════════════════════════════════════════════
+with tab_gem:
+    st.markdown("#### Gemini AI — Explain · Summarise · Ask")
+    api_k = resolve_gemini_api_key()
+
+    if not api_k:
+        st.warning(
+            "Add a Google Gemini API key to enable this tab: set **GEMINI_API_KEY** "
+            "(or **GOOGLE_API_KEY**) in your environment, or add it to "
+            "`.streamlit/secrets.toml`. Get a key from "
+            "[Google AI Studio](https://aistudio.google.com/apikey)."
+        )
+    else:
+        st.caption(
+            "Uses Google's Gemini API. Override model with env **GEMINI_MODEL** "
+            "(otherwise tries gemini-2.0-flash, then gemini-1.5-flash)."
+        )
+
+    row_top = st.columns([2, 1])
+    with row_top[1]:
+        if st.button("📥 Load last analysed article", key="btn_gemini_load"):
+            st.session_state.gemini_article_box = st.session_state.last_text or ""
+            st.rerun()
+        if st.button("🗑️ Clear chat", key="btn_gemini_clr_chat"):
+            st.session_state.gemini_msgs = []
+            st.rerun()
+        if st.button("Clear explain/summary panels", key="btn_gemini_clr_panel"):
+            st.session_state.pop("gemini_panel_explain", None)
+            st.session_state.pop("gemini_panel_summary", None)
+            st.rerun()
+
+    article_ctx = st.text_area(
+        "Article text for Gemini",
+        height=220,
+        key="gemini_article_box",
+        placeholder="Paste an article, or load the last one from Text / URL analysis.",
+    )
+
+    bc1, bc2 = st.columns(2)
+    with bc1:
+        do_explain = st.button(
+            "✨ Explain ML verdict",
+            key="btn_gemini_explain",
+            disabled=not api_k,
+            help="Uses the last TF-IDF prediction from Text/URL plus article text.",
+        )
+    with bc2:
+        do_summary = st.button(
+            "📄 Summarise article",
+            key="btn_gemini_summary",
+            disabled=not api_k,
+        )
+
+    text_for_explain = (st.session_state.last_text or "").strip() or article_ctx.strip()
+
+    if do_explain and api_k:
+        if not text_for_explain:
+            st.warning("No article text — paste content or analyse an article first.")
+        elif not st.session_state.last_ml_result:
+            st.warning("Run **Analyse** on the Text or URL tab first so an ML verdict exists.")
+        else:
+            with st.spinner("Gemini is reasoning…"):
+                try:
+                    lm = st.session_state.last_ml_result
+                    pr = build_explain_prompt(
+                        text_for_explain,
+                        lm["label"],
+                        lm["conf_pct"],
+                    )
+                    st.session_state.gemini_panel_explain = generate_gemini_text(api_k, pr)
+                except Exception as e:
+                    st.error(str(e))
+
+    if do_summary and api_k:
+        if not article_ctx.strip():
+            st.warning("Paste article text in the box above.")
+        else:
+            with st.spinner("Gemini is summarising…"):
+                try:
+                    pr = build_summarise_prompt(article_ctx)
+                    st.session_state.gemini_panel_summary = generate_gemini_text(api_k, pr)
+                except Exception as e:
+                    st.error(str(e))
+
+    ex_out = st.session_state.get("gemini_panel_explain")
+    if ex_out:
+        st.markdown("##### ML verdict explanation")
+        st.markdown(ex_out)
+
+    sm_out = st.session_state.get("gemini_panel_summary")
+    if sm_out:
+        st.markdown("##### Summary")
+        st.markdown(sm_out)
+
+    st.markdown("##### Ask questions about the article")
+    if not api_k:
+        st.caption("Configure GEMINI_API_KEY to enable chat.")
+    elif not article_ctx.strip():
+        st.caption("Paste article text above to unlock Q&A.")
+    else:
+        for msg in st.session_state.gemini_msgs:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+        if user_q := st.chat_input("Ask something about this article…"):
+            st.session_state.gemini_msgs.append({"role": "user", "content": user_q})
+            try:
+                with st.spinner("Thinking…"):
+                    ans = generate_gemini_text(
+                        api_k,
+                        build_chat_prompt(article_ctx, user_q),
+                    )
+                st.session_state.gemini_msgs.append({"role": "assistant", "content": ans})
+            except Exception as e:
+                st.session_state.gemini_msgs.append(
+                    {"role": "assistant", "content": f"(Error) {e}"}
+                )
+            st.rerun()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Footer
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
     '<p style="text-align:center; color:#334455; font-size:0.78rem; margin-bottom:8px;">'
-    'Capstone Design Project · AI-Based Fake News Detection · Week 6 (UI)&nbsp;·&nbsp;'
+    'Capstone Design Project · AI-Based Fake News Detection · Weeks 9–10 (Gemini)&nbsp;·&nbsp;'
     '<a href="https://github.com/maharram-davidov/fakenewsproject" '
     'style="color:#48CAE4; text-decoration:none;">GitHub</a>'
     '</p>',

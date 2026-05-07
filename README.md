@@ -26,7 +26,7 @@
 | **Week 2** | Terminal CLI application | ✅ Done |
 | **Week 3–6** | Streamlit web app (+ Week 6 UI polish) | ✅ Done |
 | **Week 7–8** | Telegram bot — commands, SQLite history, webhook/polling | ✅ Done |
-| **Week 9–10** | Google Gemini AI (explainability, summaries, chatbot) | 📅 Planned |
+| **Week 9–10** | Google Gemini AI (explainability, summaries, Q&A) | ✅ Done |
 | **Week 11–12** | Google Vision API (OCR) · optional BERT / REST API | 📅 Planned |
 
 ---
@@ -47,11 +47,12 @@ FakeNews/
 │   ├── preprocess.py        # Text cleaning pipeline
 │   ├── features.py          # TF-IDF feature extraction
 │   ├── train_model.py       # Training, saving, loading models
-│   └── evaluate.py          # Metrics, confusion matrix, comparison
+│   ├── evaluate.py          # Metrics, confusion matrix, comparison
+│   └── gemini_helper.py     # Week 9–10 — Gemini prompts & API calls
 ├── app/
 │   ├── cli.py               # Week 2 — Terminal CLI application
-│   ├── web_app.py           # Week 3–6 — Streamlit UI
-│   └── telegram_bot.py      # Week 7–8 — Telegram bot
+│   ├── web_app.py           # Week 3–10 — Streamlit UI (+ Gemini tab)
+│   └── telegram_bot.py      # Week 7–10 — Telegram bot (+ optional /explain)
 ├── main.py                  # Run the full pipeline
 ├── create_presentation.py   # Generate .pptx presentation
 └── requirements.txt
@@ -91,13 +92,29 @@ Place `Fake.csv` and `True.csv` inside the `data/` folder.
 python main.py
 ```
 
-### 6. Launch the Web App (Week 3–6)
+### 6. Launch the Web App (Week 3–10)
+
 ```bash
 streamlit run app/web_app.py
-# opens at http://localhost:8501
+# opens at http://localhost:8501 — includes **Gemini AI** tab when GEMINI_API_KEY is set
 ```
 
-### 7. Launch the Telegram bot (Week 7–8)
+**Gemini API key (Week 9–10)**
+
+```bash
+export GEMINI_API_KEY="your_key_from_ai_studio"
+streamlit run app/web_app.py
+```
+
+Or create `.streamlit/secrets.toml`:
+
+```toml
+GEMINI_API_KEY = "your_key_here"
+```
+
+Optional: `GEMINI_MODEL` (defaults try `gemini-2.0-flash` then `gemini-1.5-flash`). Get a key at [Google AI Studio](https://aistudio.google.com/apikey).
+
+### 7. Launch the Telegram bot (Week 7–10)
 
 Requires `models/*.pkl` (train once with `python main.py`) and a bot token from [@BotFather](https://t.me/BotFather).
 
@@ -108,7 +125,7 @@ export TELEGRAM_BOT_TOKEN="your_token_here"
 python -m app.telegram_bot
 ```
 
-Predictions are stored in `data/telegram_bot.sqlite3` (override with `TELEGRAM_DB_PATH`). Commands: `/start`, `/help`, `/check`, `/url`, `/history`, `/stats`.
+Predictions are stored in `data/telegram_bot.sqlite3` (override with `TELEGRAM_DB_PATH`). Commands: `/start`, `/help`, `/check`, `/url`, `/history`, `/stats`, `/explain` (Gemini; requires `GEMINI_API_KEY` on the server).
 
 **Webhook (e.g. Railway / Render)**
 
@@ -169,8 +186,9 @@ Raw Data → Preprocess → TF-IDF Features → Train Models → Evaluate → Sa
 - **Presentation**: python-pptx
 - **CLI (Week 2)**: colorama, requests, BeautifulSoup4
 - **Web UI**: Streamlit
-- **Telegram**: python-telegram-bot (Week 7–8)
-- **Coming**: Google Gemini API, Google Vision API
+- **Telegram**: python-telegram-bot (Week 7–10)
+- **LLM (Week 9–10)**: Google Gemini (`google-generativeai`)
+- **Coming**: Google Vision API (Week 11–12)
 
 ---
 
