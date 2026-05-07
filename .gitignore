@@ -17,6 +17,7 @@ ENV/
 data/*.csv
 data/*.tsv
 data/*.json
+data/*.sqlite3
 
 # ── Saved models & artefacts ──────────────────────────────────────────────────
 models/*.pkl

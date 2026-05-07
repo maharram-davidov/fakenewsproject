@@ -24,10 +24,10 @@
 |---|---|---|
 | **Week 1** | ML baseline pipeline (TF-IDF + LR + NB) | ✅ Done |
 | **Week 2** | Terminal CLI application | ✅ Done |
-| **Week 3** | Streamlit web application | ✅ Done |
-| **Week 4** | Telegram bot integration | 📅 Planned |
-| **Week 5** | Google Gemini AI (explainability) | 📅 Planned |
-| **Week 6** | Google Vision API (OCR from screenshots) | 📅 Planned |
+| **Week 3–6** | Streamlit web app (+ Week 6 UI polish) | ✅ Done |
+| **Week 7–8** | Telegram bot — commands, SQLite history, webhook/polling | ✅ Done |
+| **Week 9–10** | Google Gemini AI (explainability, summaries, chatbot) | 📅 Planned |
+| **Week 11–12** | Google Vision API (OCR) · optional BERT / REST API | 📅 Planned |
 
 ---
 
@@ -49,7 +49,9 @@ FakeNews/
 │   ├── train_model.py       # Training, saving, loading models
 │   └── evaluate.py          # Metrics, confusion matrix, comparison
 ├── app/
-│   └── cli.py               # Week 2 — Terminal CLI application
+│   ├── cli.py               # Week 2 — Terminal CLI application
+│   ├── web_app.py           # Week 3–6 — Streamlit UI
+│   └── telegram_bot.py      # Week 7–8 — Telegram bot
 ├── main.py                  # Run the full pipeline
 ├── create_presentation.py   # Generate .pptx presentation
 └── requirements.txt
@@ -89,13 +91,30 @@ Place `Fake.csv` and `True.csv` inside the `data/` folder.
 python main.py
 ```
 
-### 6. Launch the Web App (Week 3)
+### 6. Launch the Web App (Week 3–6)
 ```bash
 streamlit run app/web_app.py
 # opens at http://localhost:8501
 ```
 
-### 7. Launch the Terminal CLI (Week 2)
+### 7. Launch the Telegram bot (Week 7–8)
+
+Requires `models/*.pkl` (train once with `python main.py`) and a bot token from [@BotFather](https://t.me/BotFather).
+
+**Local polling (development)**
+
+```bash
+export TELEGRAM_BOT_TOKEN="your_token_here"
+python -m app.telegram_bot
+```
+
+Predictions are stored in `data/telegram_bot.sqlite3` (override with `TELEGRAM_DB_PATH`). Commands: `/start`, `/help`, `/check`, `/url`, `/history`, `/stats`.
+
+**Webhook (e.g. Railway / Render)**
+
+Set `TELEGRAM_WEBHOOK_URL` to your public HTTPS origin (no trailing path needed), optionally `TELEGRAM_WEBHOOK_PATH` (default `tg-webhook`), and `PORT` if your host provides it. The app calls Telegram `setWebhook` automatically.
+
+### 8. Launch the Terminal CLI (Week 2)
 ```bash
 # Interactive mode (default)
 python -m app.cli
@@ -113,12 +132,12 @@ python -m app.cli --file data/articles.csv --col text
 python -m app.cli --model naive_bayes
 ```
 
-### 7. Open the EDA notebook
+### 9. Open the EDA notebook
 ```bash
 jupyter notebook notebooks/week1_eda.ipynb
 ```
 
-### 8. Regenerate the presentation
+### 10. Regenerate the presentation
 ```bash
 python create_presentation.py
 ```
@@ -149,7 +168,9 @@ Raw Data → Preprocess → TF-IDF Features → Train Models → Evaluate → Sa
 - **Notebook**: Jupyter
 - **Presentation**: python-pptx
 - **CLI (Week 2)**: colorama, requests, BeautifulSoup4
-- **Coming**: Streamlit, python-telegram-bot, Google Gemini API, Google Vision API
+- **Web UI**: Streamlit
+- **Telegram**: python-telegram-bot (Week 7–8)
+- **Coming**: Google Gemini API, Google Vision API
 
 ---
 
