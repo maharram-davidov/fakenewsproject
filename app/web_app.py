@@ -1,7 +1,7 @@
 """
 app/web_app.py
 ==============
-Week 3 (Improved) — Streamlit Web Application
+Week 6 — Streamlit UI polish (layout, typography, visual hierarchy).
 AI-Based Fake News Detection System
 
 Run:
@@ -44,56 +44,213 @@ st.set_page_config(
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&display=swap');
+
 /* ── Base ──────────────────────────────────────────── */
-.stApp                    { background-color:#0D1B2A; color:#E8F0F8; }
+html, body, input, textarea, button {
+    font-family:"Plus Jakarta Sans",system-ui,-apple-system,sans-serif !important;
+}
+.stApp {
+    background-color:#0B1524;
+    background-image:
+        radial-gradient(ellipse 900px 420px at 18% -8%, #00B4D828 0%, transparent 55%),
+        radial-gradient(ellipse 700px 380px at 92% 8%, #06D6A018 0%, transparent 50%),
+        radial-gradient(ellipse 600px 300px at 50% 110%, #EF476F12 0%, transparent 45%);
+    color:#E8F0F8;
+}
+.block-container { padding-top:1.25rem; max-width:1180px; }
 #MainMenu, footer, header { visibility:hidden; }
 
 /* ── Sidebar ───────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg,#091422 0%,#0D1F35 100%);
-    border-right: 1px solid #1E3450;
+    background: linear-gradient(165deg,#070F18 0%,#0D1F35 48%,#091422 100%);
+    border-right: 1px solid rgba(30,52,80,0.85);
+    box-shadow: inset -1px 0 0 rgba(0,180,216,0.06);
 }
 [data-testid="stSidebar"] * { color:#CCD6E0 !important; }
+[data-testid="stSidebar"] .stMarkdown h2 { letter-spacing:-0.02em; }
+
+/* ── Hero ───────────────────────────────────────────── */
+.hero-shell {
+    position:relative;
+    margin:-6px 0 10px 0;
+    padding:1px;
+    border-radius:18px;
+    background:linear-gradient(135deg,#00B4D855 0%,#1E345066 38%,#06D6A044 100%);
+    animation: fadeIn .45s ease;
+}
+.hero-inner {
+    border-radius:17px;
+    padding:22px 26px 20px;
+    background:linear-gradient(180deg,rgba(15,36,58,0.94) 0%,rgba(9,20,34,0.92) 100%);
+    border:1px solid rgba(30,52,80,0.95);
+    box-shadow:0 18px 42px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.hero-kicker {
+    display:inline-block;
+    font-size:0.72rem;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:#48CAE4;
+    background:rgba(0,180,216,0.12);
+    border:1px solid rgba(0,180,216,0.35);
+    border-radius:999px;
+    padding:5px 12px;
+    margin-bottom:12px;
+}
+.hero-title {
+    margin:0;
+    font-size:clamp(1.55rem,3vw,2.05rem);
+    font-weight:800;
+    letter-spacing:-0.03em;
+    color:#E8F0F8;
+    line-height:1.15;
+}
+.hero-icon { margin-right:8px; filter:drop-shadow(0 0 12px #00B4D866); }
+.hero-sub {
+    margin:10px 0 0 0;
+    color:#8899AA;
+    font-size:0.95rem;
+    line-height:1.45;
+    max-width:52ch;
+}
+.hero-chips { margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; }
+.hero-chip {
+    font-size:0.76rem;
+    font-weight:600;
+    color:#AAB9C9;
+    background:rgba(16,40,63,0.85);
+    border:1px solid #1E3450;
+    border-radius:999px;
+    padding:6px 12px;
+}
+.hero-chip-accent {
+    color:#0D1B2A;
+    background:linear-gradient(135deg,#48CAE4,#00B4D8);
+    border:none;
+}
+
+/* ── Section titles (Streamlit markdown headings) ─────── */
+.stMarkdown h4 {
+    color:#E8F0F8 !important;
+    font-size:1.06rem !important;
+    font-weight:700 !important;
+    letter-spacing:-0.02em !important;
+    margin:8px 0 14px 0 !important;
+}
+.stMarkdown h5 {
+    color:#CCD6E0 !important;
+    font-size:0.98rem !important;
+    font-weight:700 !important;
+    margin:12px 0 12px 0 !important;
+}
+
+/* ── Section titles (explicit) ───────────────────────── */
+.section-title {
+    font-size:1.05rem !important;
+    font-weight:700 !important;
+    letter-spacing:-0.02em;
+    color:#E8F0F8 !important;
+    margin:6px 0 12px 0 !important;
+}
+
+/* ── Panel cards (tips / format boxes) ───────────────── */
+.panel-card {
+    background:rgba(9,20,34,0.92);
+    border:1px solid #1E3450;
+    border-radius:14px;
+    padding:18px 18px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.panel-title {
+    color:#48CAE4;
+    font-weight:700;
+    margin-bottom:10px;
+    font-size:0.92rem;
+}
+.panel-body {
+    color:#8899AA;
+    font-size:0.82rem;
+    line-height:1.75;
+}
 
 /* ── Tabs ───────────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
-    background:#091422;
-    border-radius:10px;
-    padding:4px 6px;
-    gap:4px;
+    background:rgba(9,20,34,0.85);
+    border-radius:12px;
+    padding:5px 7px;
+    gap:5px;
+    border:1px solid #1E3450;
 }
 .stTabs [data-baseweb="tab"] {
-    border-radius:7px;
-    padding:8px 18px;
+    border-radius:9px;
+    padding:9px 16px;
     font-weight:600;
+    font-size:0.88rem;
     color:#8899AA !important;
     background:transparent;
 }
 .stTabs [aria-selected="true"] {
-    background:#00B4D8 !important;
-    color:#0D1B2A !important;
+    background:linear-gradient(135deg,#48CAE4,#00B4D8) !important;
+    color:#061018 !important;
+    box-shadow:0 6px 18px rgba(0,180,216,0.28);
 }
 
 /* ── Buttons ────────────────────────────────────────── */
 .stButton > button {
-    background:#00B4D8; color:#0D1B2A;
-    font-weight:700; border:none;
-    border-radius:8px; padding:10px 28px;
-    font-size:1rem; width:100%;
-    transition:background 0.2s, transform 0.1s;
+    background:linear-gradient(135deg,#48CAE4,#00B4D8);
+    color:#061018;
+    font-weight:700;
+    border:none;
+    border-radius:11px;
+    padding:11px 26px;
+    font-size:1rem;
+    width:100%;
+    transition:filter 0.2s, transform 0.12s, box-shadow 0.2s;
+    box-shadow:0 10px 26px rgba(0,180,216,0.22);
 }
-.stButton > button:hover { background:#48CAE4; transform:translateY(-1px); }
+.stButton > button:hover {
+    filter:brightness(1.06);
+    transform:translateY(-1px);
+    box-shadow:0 14px 32px rgba(0,180,216,0.3);
+}
 
 /* ── Text inputs ────────────────────────────────────── */
 .stTextArea textarea, .stTextInput input {
     background:#10283F !important;
     color:#E8F0F8 !important;
     border:1px solid #1E3450 !important;
-    border-radius:8px !important;
+    border-radius:11px !important;
 }
 .stTextArea textarea:focus, .stTextInput input:focus {
     border-color:#00B4D8 !important;
-    box-shadow:0 0 0 2px #00B4D840 !important;
+    box-shadow:0 0 0 3px #00B4D835 !important;
+}
+
+/* ── Selectbox / slider ─────────────────────────────── */
+[data-baseweb="select"] > div {
+    background:#10283F !important;
+    border-color:#1E3450 !important;
+    border-radius:10px !important;
+}
+[data-testid="stSlider"] [data-baseweb="slider"] [role="slider"] {
+    background:#00B4D8 !important;
+}
+[data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stTickBarMin"], 
+[data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stTickBarMax"] {
+    background:rgba(0,180,216,0.35) !important;
+}
+
+/* ── Progress ─────────────────────────────────────────── */
+.stProgress > div > div > div > div {
+    background:linear-gradient(90deg,#48CAE4,#00B4D8) !important;
+}
+
+/* ── Streamlit metrics ───────────────────────────────── */
+[data-testid="stMetricValue"] {
+    color:#E8F0F8 !important;
+    font-weight:800 !important;
 }
 
 /* ── Labels ─────────────────────────────────────────── */
@@ -102,19 +259,21 @@ label, .stTextArea label, .stTextInput label,
 
 /* ── Result card ────────────────────────────────────── */
 .result-card {
-    border-radius:14px; padding:30px 36px;
-    margin-top:20px; text-align:center;
+    border-radius:16px;
+    padding:30px 36px;
+    margin-top:20px;
+    text-align:center;
     animation: fadeIn .4s ease;
 }
 .card-fake {
     background:linear-gradient(135deg,#3D0C11 0%,#1A0508 100%);
     border:2px solid #EF476F;
-    box-shadow:0 0 24px #EF476F33;
+    box-shadow:0 0 28px #EF476F38, inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .card-real {
     background:linear-gradient(135deg,#043D25 0%,#021A10 100%);
     border:2px solid #06D6A0;
-    box-shadow:0 0 24px #06D6A033;
+    box-shadow:0 0 28px #06D6A038, inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .verdict       { font-size:2.6rem; font-weight:800; letter-spacing:3px; }
 .verdict-fake  { color:#EF476F; }
@@ -126,8 +285,12 @@ label, .stTextArea label, .stTextInput label,
     display:flex; gap:14px; margin-top:18px; justify-content:center; flex-wrap:wrap;
 }
 .metric-box {
-    background:#10283F; border-radius:10px;
-    padding:14px 24px; text-align:center; min-width:120px;
+    background:rgba(16,40,63,0.9);
+    border-radius:12px;
+    padding:14px 24px;
+    text-align:center;
+    min-width:120px;
+    border:1px solid #1E3450;
 }
 .metric-val  { font-size:1.55rem; font-weight:700; }
 .metric-name { font-size:0.75rem; color:#8899AA; margin-top:3px; }
@@ -135,24 +298,38 @@ label, .stTextArea label, .stTextInput label,
 
 /* ── Stat pill ──────────────────────────────────────── */
 .stat-pill {
-    display:inline-block; border-radius:20px;
-    padding:4px 14px; font-size:0.8rem; font-weight:700; margin:3px;
+    display:inline-block;
+    border-radius:20px;
+    padding:5px 14px;
+    font-size:0.78rem;
+    font-weight:700;
+    margin:3px;
 }
-.pill-total { background:#10283F;  color:#48CAE4; border:1px solid #00B4D8; }
+.pill-total { background:#10283F; color:#48CAE4; border:1px solid #00B4D8; }
 .pill-fake  { background:#3D0C1120; color:#EF476F; border:1px solid #EF476F; }
 .pill-real  { background:#04452A20; color:#06D6A0; border:1px solid #06D6A0; }
 
 /* ── History row ────────────────────────────────────── */
 .hist-row {
-    display:flex; align-items:center; gap:12px;
-    padding:10px 14px; border-radius:8px; margin-bottom:6px;
-    background:#10283F; border:1px solid #1E3450;
-    transition:background 0.15s;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:11px 15px;
+    border-radius:11px;
+    margin-bottom:7px;
+    background:rgba(16,40,63,0.72);
+    border:1px solid #1E3450;
+    transition:background 0.15s, border-color 0.15s;
 }
-.hist-row:hover { background:#152E48; }
+.hist-row:hover { background:#152E48; border-color:#243E63; }
 .hist-badge {
-    font-size:0.72rem; font-weight:700; padding:3px 11px;
-    border-radius:12px; min-width:50px; text-align:center; flex-shrink:0;
+    font-size:0.72rem;
+    font-weight:700;
+    padding:4px 11px;
+    border-radius:12px;
+    min-width:50px;
+    text-align:center;
+    flex-shrink:0;
 }
 .badge-fake { background:#EF476F22; color:#EF476F; border:1px solid #EF476F; }
 .badge-real { background:#06D6A022; color:#06D6A0; border:1px solid #06D6A0; }
@@ -161,32 +338,72 @@ label, .stTextArea label, .stTextInput label,
 
 /* ── Dashboard KPI card ─────────────────────────────── */
 .kpi-card {
-    background:#10283F; border-radius:12px;
-    padding:20px 16px; text-align:center;
+    background:rgba(16,40,63,0.72);
+    border-radius:14px;
+    padding:20px 14px;
+    text-align:center;
     border-top:3px solid;
+    border:1px solid #1E3450;
+    border-top-width:3px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);
 }
 .kpi-val   { font-size:2rem; font-weight:800; }
-.kpi-label { color:#8899AA; font-size:0.8rem; margin-top:4px; }
+.kpi-label { color:#8899AA; font-size:0.78rem; margin-top:5px; }
+
+/* ── Pipeline step cards ─────────────────────────────── */
+.pipe-card {
+    background:rgba(9,20,34,0.92);
+    border:1px solid #1E3450;
+    border-radius:14px;
+    padding:15px 10px;
+    text-align:center;
+    box-shadow:0 8px 22px rgba(0,0,0,0.18);
+    transition:transform 0.15s, border-color 0.15s;
+}
+.pipe-card:hover {
+    transform:translateY(-2px);
+    border-color:#2A4A73;
+}
 
 /* ── Confidence threshold warning ───────────────────── */
 .low-conf {
-    background:#3D3800; border:1px solid #FFD166;
-    border-radius:8px; padding:10px 16px; margin-top:14px;
-    color:#FFD166; font-size:0.9rem;
+    background:#3D3800;
+    border:1px solid #FFD166;
+    border-radius:11px;
+    padding:12px 17px;
+    margin-top:14px;
+    color:#FFD166;
+    font-size:0.9rem;
 }
 
 /* ── Fade-in animation ───────────────────────────────── */
 @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
 /* ── Divider ────────────────────────────────────────── */
-hr { border-color:#1E3450; }
+hr { border-color:#1E3450; opacity:0.85; }
 
 /* ── File uploader ──────────────────────────────────── */
 [data-testid="stFileUploader"] {
-    border:2px dashed #1E3450 !important;
-    border-radius:10px !important;
-    background:#091422 !important;
+    border:2px dashed rgba(30,52,80,0.95) !important;
+    border-radius:14px !important;
+    background:rgba(9,20,34,0.65) !important;
 }
+[data-testid="stFileUploader"]:hover {
+    border-color:rgba(0,180,216,0.55) !important;
+}
+
+/* ── Captions ───────────────────────────────────────── */
+[data-testid="stCaptionContainer"] { color:#6B7C90 !important; }
+
+/* ── Scrollbars (WebKit) ─────────────────────────────── */
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-track { background:#091422; }
+::-webkit-scrollbar-thumb {
+    background:#1E3450;
+    border-radius:10px;
+    border:2px solid #091422;
+}
+::-webkit-scrollbar-thumb:hover { background:#2A4A73; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -315,8 +532,10 @@ model, vectorizer, model_name = get_model()
 
 with st.sidebar:
     st.markdown("""
-    <h2 style="color:#00B4D8; margin-bottom:2px;">🔍 Fake News<br>Detector</h2>
-    <p style="color:#445566; font-size:0.8rem; margin-top:0;">AI-Based Detection System</p>
+    <h2 style="color:#00B4D8; margin-bottom:4px; font-weight:800; letter-spacing:-0.02em;">
+        🔍 Fake News<br>Detector</h2>
+    <p style="color:#5C6D82; font-size:0.78rem; margin-top:0; line-height:1.4;">
+        AI-Based Detection · Week 6 UI</p>
     """, unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -326,11 +545,16 @@ with st.sidebar:
         st.stop()
 
     st.markdown(f"""
-    <div style="background:#10283F; border-radius:8px; padding:12px 14px; margin-bottom:16px;">
-        <div style="color:#8899AA; font-size:0.75rem; margin-bottom:4px;">ACTIVE MODEL</div>
-        <div style="color:#48CAE4; font-weight:700;">{model_name}.pkl</div>
-        <div style="color:#8899AA; font-size:0.75rem; margin-top:6px;">Accuracy&nbsp;&nbsp;<span style="color:#06D6A0;font-weight:700;">99.22%</span></div>
-        <div style="color:#8899AA; font-size:0.75rem;">F1 Score&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#06D6A0;font-weight:700;">99.25%</span></div>
+    <div style="background:rgba(16,40,63,0.85); border-radius:12px; padding:14px 15px;
+                margin-bottom:16px; border:1px solid #1E3450;
+                box-shadow:inset 0 1px 0 rgba(255,255,255,0.03);">
+        <div style="color:#8899AA; font-size:0.72rem; margin-bottom:6px; letter-spacing:0.08em;
+                    font-weight:700;">ACTIVE MODEL</div>
+        <div style="color:#48CAE4; font-weight:800; font-size:1rem;">{model_name}.pkl</div>
+        <div style="color:#8899AA; font-size:0.75rem; margin-top:8px;">Accuracy&nbsp;&nbsp;
+            <span style="color:#06D6A0;font-weight:700;">99.22%</span></div>
+        <div style="color:#8899AA; font-size:0.75rem;">F1 Score&nbsp;&nbsp;&nbsp;&nbsp;
+            <span style="color:#06D6A0;font-weight:700;">99.25%</span></div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -368,8 +592,8 @@ with st.sidebar:
         """)
 
     st.markdown(
-        '<p style="color:#334455; font-size:0.72rem; text-align:center; margin-top:20px;">'
-        'Capstone Project · Week 3</p>',
+        '<p style="color:#334455; font-size:0.72rem; text-align:center; margin-top:22px;">'
+        'Capstone · Week 6 (UI)</p>',
         unsafe_allow_html=True,
     )
 
@@ -378,12 +602,22 @@ with st.sidebar:
 # Page header
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
-<h1 style="color:#00B4D8; font-size:2rem; margin-bottom:2px; margin-top:-10px;">
-    🔍 Fake News Detector
-</h1>
-<p style="color:#8899AA; font-size:0.95rem; margin-bottom:22px;">
-    AI-Based Detection System &nbsp;·&nbsp; Capstone Design Project
-</p>
+<div class="hero-shell">
+    <div class="hero-inner">
+        <div class="hero-kicker">Week 6 · Interface polish</div>
+        <h1 class="hero-title"><span class="hero-icon">🔍</span>Fake News Detector</h1>
+        <p class="hero-sub">
+            Paste text, fetch from a URL, or run batch CSV — English news articles work best.
+            Capstone design project.
+        </p>
+        <div class="hero-chips">
+            <span class="hero-chip">📝 Text</span>
+            <span class="hero-chip">🔗 URL</span>
+            <span class="hero-chip">📂 Batch</span>
+            <span class="hero-chip hero-chip-accent">Live predictions</span>
+        </div>
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 
@@ -437,9 +671,9 @@ with tab_text:
 
     with col_tip:
         st.markdown("""
-        <div style="background:#091422; border:1px solid #1E3450; border-radius:10px; padding:16px; margin-top:34px;">
-            <div style="color:#48CAE4; font-weight:700; margin-bottom:10px;">💡 Tips</div>
-            <div style="color:#8899AA; font-size:0.82rem; line-height:1.7;">
+        <div class="panel-card" style="margin-top:38px;">
+            <div class="panel-title">💡 Tips</div>
+            <div class="panel-body">
                 • Use a <b>full article</b> (not just a headline) for best accuracy<br><br>
                 • Longer text → more reliable prediction<br><br>
                 • If confidence is low, try adding more context<br><br>
@@ -487,9 +721,9 @@ with tab_url:
 
     with col_tip:
         st.markdown("""
-        <div style="background:#091422; border:1px solid #1E3450; border-radius:10px; padding:16px; margin-top:34px;">
-            <div style="color:#48CAE4; font-weight:700; margin-bottom:10px;">🔗 Supported sites</div>
-            <div style="color:#8899AA; font-size:0.82rem; line-height:1.8;">
+        <div class="panel-card" style="margin-top:38px;">
+            <div class="panel-title">🔗 Supported sites</div>
+            <div class="panel-body">
                 • reuters.com<br>
                 • bbc.com/news<br>
                 • apnews.com<br>
@@ -519,13 +753,13 @@ with tab_batch:
 
     with col_right:
         st.markdown("""
-        <div style="background:#091422; border:1px solid #1E3450; border-radius:10px; padding:16px; margin-top:36px;">
-            <div style="color:#48CAE4; font-weight:700; margin-bottom:8px;">📋 CSV Format</div>
-            <div style="color:#8899AA; font-size:0.82rem; line-height:1.8;">
+        <div class="panel-card" style="margin-top:40px;">
+            <div class="panel-title">📋 CSV format</div>
+            <div class="panel-body">
                 Required: a column with article text<br><br>
                 Example columns:<br>
-                <code style="color:#FFD166;">text</code>, 
-                <code style="color:#FFD166;">article</code>, 
+                <code style="color:#FFD166;">text</code>,
+                <code style="color:#FFD166;">article</code>,
                 <code style="color:#FFD166;">content</code><br><br>
                 Output adds two columns:<br>
                 <code style="color:#06D6A0;">prediction</code><br>
@@ -721,11 +955,10 @@ with tab_dash:
     cols = st.columns(5)
     for col, (icon, title, desc) in zip(cols, steps):
         col.markdown(f"""
-        <div style="background:#091422; border:1px solid #1E3450; border-radius:10px;
-                    padding:14px 10px; text-align:center;">
-            <div style="font-size:1.8rem;">{icon}</div>
-            <div style="color:#48CAE4; font-weight:700; font-size:0.85rem; margin:6px 0 4px;">{title}</div>
-            <div style="color:#8899AA; font-size:0.75rem; line-height:1.5;">{desc}</div>
+        <div class="pipe-card">
+            <div style="font-size:1.85rem;">{icon}</div>
+            <div style="color:#48CAE4; font-weight:700; font-size:0.85rem; margin:8px 0 5px;">{title}</div>
+            <div style="color:#8899AA; font-size:0.74rem; line-height:1.55;">{desc}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -764,10 +997,14 @@ with tab_hist:
 
     if not history:
         st.markdown("""
-        <div style="text-align:center; padding:60px 0; color:#445566;">
-            <div style="font-size:3rem;">📋</div>
-            <div style="margin-top:12px; font-size:1rem;">No predictions yet.</div>
-            <div style="font-size:0.85rem; margin-top:6px;">Analyse an article in the Text or URL tab.</div>
+        <div style="text-align:center; padding:52px 18px;">
+            <div style="font-size:3.2rem; opacity:0.85;">📋</div>
+            <div style="margin-top:14px; font-size:1.05rem; font-weight:600; color:#CCD6E0;">
+                No predictions yet
+            </div>
+            <div style="font-size:0.88rem; margin-top:8px; color:#5C6D82; max-width:320px; margin-left:auto; margin-right:auto;">
+                Run an analysis from the Text or URL tab — results appear here for this session.
+            </div>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -830,10 +1067,10 @@ with tab_hist:
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("<hr>", unsafe_allow_html=True)
 st.markdown(
-    '<p style="text-align:center; color:#334455; font-size:0.78rem;">'
-    'Capstone Design Project &nbsp;·&nbsp; AI-Based Fake News Detection System'
-    '&nbsp;·&nbsp; Week 3 (Improved) &nbsp;·&nbsp; '
-    'github.com/maharram-davidov/fakenewsproject'
+    '<p style="text-align:center; color:#334455; font-size:0.78rem; margin-bottom:8px;">'
+    'Capstone Design Project · AI-Based Fake News Detection · Week 6 (UI)&nbsp;·&nbsp;'
+    '<a href="https://github.com/maharram-davidov/fakenewsproject" '
+    'style="color:#48CAE4; text-decoration:none;">GitHub</a>'
     '</p>',
     unsafe_allow_html=True,
 )
