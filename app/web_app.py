@@ -1,7 +1,7 @@
 """
 app/web_app.py
 ==============
-Week 9–10 — Streamlit UI + Google Gemini (explainability, summaries, Q&A).
+Weeks 9–11 — Streamlit UI + Gemini/Groq AI layer + OCR image scan.
 
 Run:
     streamlit run app/web_app.py
@@ -24,6 +24,7 @@ import streamlit as st
 
 from src.train_model import load_model, predict
 from src.config import MODELS_DIR
+from src.ocr_helper import extract_text_from_image, ocr_available
 from src.gemini_helper import (
     build_chat_prompt,
     build_explain_prompt,
@@ -601,11 +602,18 @@ with st.sidebar:
         help="Predictions below this confidence will show a warning.",
     )
 
-    st.markdown("**Gemini (Week 9–10)**")
-    if resolve_gemini_api_key():
-        st.caption("API key OK · summaries / explain / chat enabled")
+    st.markdown("**AI Insights (Groq / Gemini)**")
+    if os.getenv("GROQ_API_KEY") or resolve_gemini_api_key():
+        st.caption("API key OK · explain / summarise / chat enabled")
     else:
-        st.caption("Set GEMINI_API_KEY or `.streamlit/secrets.toml`")
+        st.caption("Set GROQ_API_KEY or GEMINI_API_KEY in .env")
+
+    ocr_ok, ocr_eng = ocr_available()
+    st.markdown("**OCR Engine (Week 11)**")
+    if ocr_ok:
+        st.caption(f"Ready · using `{ocr_eng}`")
+    else:
+        st.caption("Not installed — `brew install tesseract`")
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -614,15 +622,16 @@ with st.sidebar:
         st.markdown("""
         1. **Text tab** — paste a full article  
         2. **URL tab** — enter a news article link  
-        3. **Batch tab** — upload a CSV with articles  
-        4. **Dashboard** — see model & dataset stats  
-        5. **History** — review past predictions  
-        6. **Gemini AI** — explanations, summaries, Q&A (needs API key)  
+        3. **Image Scan** — upload a photo/screenshot of a news article  
+        4. **Batch tab** — upload a CSV with articles  
+        5. **Dashboard** — see model & dataset stats  
+        6. **History** — review past predictions  
+        7. **AI Insights** — explanations, summaries, Q&A (needs API key)  
         """)
 
     st.markdown(
         '<p style="color:#334455; font-size:0.72rem; text-align:center; margin-top:22px;">'
-        'Capstone · Weeks 9–10 (Gemini)</p>',
+        'Capstone · Week 11 (OCR)</p>',
         unsafe_allow_html=True,
     )
 
@@ -633,18 +642,19 @@ with st.sidebar:
 st.markdown("""
 <div class="hero-shell">
     <div class="hero-inner">
-        <div class="hero-kicker">Week 9–10 · Gemini AI layer</div>
+        <div class="hero-kicker">Week 11 · OCR Image Scan</div>
         <h1 class="hero-title"><span class="hero-icon">🔍</span>Fake News Detector</h1>
         <p class="hero-sub">
-            Paste text, fetch from a URL, or run batch CSV — English news articles work best.
+            Paste text, fetch a URL, scan a photo, or run batch CSV — English news articles work best.
             Capstone design project.
         </p>
         <div class="hero-chips">
             <span class="hero-chip">📝 Text</span>
             <span class="hero-chip">🔗 URL</span>
+            <span class="hero-chip hero-chip-accent">📸 Image Scan</span>
             <span class="hero-chip">📂 Batch</span>
             <span class="hero-chip">⚡ ML scores</span>
-            <span class="hero-chip hero-chip-accent">Gemini insights</span>
+            <span class="hero-chip">✨ AI insights</span>
         </div>
     </div>
 </div>
@@ -654,13 +664,14 @@ st.markdown("""
 # ─────────────────────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
-tab_text, tab_url, tab_batch, tab_dash, tab_hist, tab_gem = st.tabs([
+tab_text, tab_url, tab_ocr, tab_batch, tab_dash, tab_hist, tab_gem = st.tabs([
     "📝 Text Input",
     "🔗 URL Input",
+    "📸 Image Scan",
     "📂 Batch CSV",
     "📊 Dashboard",
     "📋 History",
-    "✨ Gemini AI",
+    "✨ AI Insights",
 ])
 
 
@@ -775,7 +786,98 @@ with tab_url:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TAB 3 — Batch CSV
+# TAB 3 — Image Scan (OCR)  Week 11
+# ═════════════════════════════════════════════════════════════════════════════
+with tab_ocr:
+    col_main, col_tip = st.columns([3, 1])
+
+    with col_main:
+        st.markdown("#### Upload a news article image")
+
+        _ocr_ok, _ocr_engine = ocr_available()
+        if not _ocr_ok:
+            st.warning(
+                "Tesseract OCR is not installed. Install it with:\n\n"
+                "```bash\nbrew install tesseract\npip install pytesseract Pillow\n```"
+            )
+
+        uploaded_img = st.file_uploader(
+            label="Upload image",
+            type=["png", "jpg", "jpeg", "webp", "bmp", "tiff"],
+            label_visibility="collapsed",
+            key="fu_ocr",
+        )
+
+        if uploaded_img is not None:
+            st.image(uploaded_img, caption="Uploaded image", use_column_width=True)
+            img_bytes = uploaded_img.read()
+
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                run_ocr = st.button("📸 Extract Text & Analyse", key="btn_ocr")
+
+            if run_ocr:
+                with st.spinner("Running OCR…"):
+                    extracted, engine, ocr_err = extract_text_from_image(img_bytes)
+
+                if ocr_err or not extracted.strip():
+                    st.error(f"OCR failed: {ocr_err or 'No text extracted.'}")
+                    st.info(
+                        "Tips: make sure the image is well-lit, not blurry, "
+                        "and contains clearly readable English text."
+                    )
+                else:
+                    wc = len(extracted.split())
+                    st.success(f"✅ OCR extracted **{wc:,}** words  ·  engine: `{engine}`")
+
+                    with st.expander("📄 Extracted text (click to expand)"):
+                        st.text_area(
+                            "ocr_extracted",
+                            value=extracted,
+                            height=200,
+                            label_visibility="collapsed",
+                            disabled=True,
+                        )
+
+                    with st.spinner("Classifying extracted text…"):
+                        t0 = time.perf_counter()
+                        result = predict(extracted, model, vectorizer)
+                        ms = (time.perf_counter() - t0) * 1000
+
+                    st.session_state.last_text = extracted
+                    st.session_state.last_ml_result = {
+                        "label": str(result.get("label_name") or "").upper(),
+                        "conf_pct": (result.get("confidence") or 0.0) * 100,
+                    }
+                    _record(result, extracted)
+                    _render_result(result, ms, conf_threshold)
+
+    with col_tip:
+        st.markdown("""
+        <div class="panel-card" style="margin-top:38px;">
+            <div class="panel-title">📸 OCR Tips</div>
+            <div class="panel-body">
+                • <b>Screenshots</b> of news websites work best<br><br>
+                • Photo must be <b>well-lit</b> &amp; <b>in focus</b><br><br>
+                • <b>English text only</b><br><br>
+                • Longer articles → more reliable prediction<br><br>
+                • After extraction, extracted text is auto-saved for AI Insights tab
+            </div>
+        </div>
+        <div class="panel-card" style="margin-top:12px;">
+            <div class="panel-title">⚙️ OCR Engine</div>
+            <div class="panel-body">
+                Primary: <b>Tesseract</b><br>
+                Fallback: <b>EasyOCR</b><br><br>
+                Install Tesseract:<br>
+                <code>brew install tesseract</code>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TAB 4 — Batch CSV
 # ═════════════════════════════════════════════════════════════════════════════
 with tab_batch:
     col_left, col_right = st.columns([2, 1])

@@ -44,10 +44,13 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 
 from src.config import BASE_DIR, MODELS_DIR
 from src.train_model import load_model, predict
+from src.ocr_helper import extract_text_from_image
 from src.gemini_helper import (
     build_explain_prompt,
     build_summarise_prompt,
@@ -95,6 +98,16 @@ def _has_ai() -> bool:
 
 # backwards-compat alias used in cmd_explain / cmd_summarise
 _has_gemini = _has_ai
+
+
+def _get_ai_key() -> str:
+    """Return the Gemini key (or empty string).
+    generate_gemini_text() falls back to GROQ_API_KEY automatically."""
+    return (
+        os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_API_KEY")
+        or ""
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -378,6 +391,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "<b>Commands</b>\n"
         "📝 /check — classify pasted text\n"
         "🔗 /url — classify a news URL\n"
+        "📸 Send a photo — scan & classify (OCR)\n"
         "📋 /history — last predictions\n"
         "📊 /stats — session counts\n"
         "❓ /help — usage tips"
@@ -396,6 +410,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "  Reply to any message that contains the article with /check.\n\n"
         "<b>/url</b> <i>https://…</i>\n"
         "  Bot fetches the page and classifies the article.\n\n"
+        "📸 <b>Send a photo</b>\n"
+        "  Take a screenshot or photo of a news article and send it.\n"
+        "  The bot will OCR the text and classify it automatically.\n\n"
+        "<b>/scan</b>\n"
+        "  Usage tips for the photo feature.\n\n"
         "<b>/history</b>\n"
         "  Last 10 predictions for this chat.\n\n"
         "<b>/stats</b>\n"
@@ -526,10 +545,10 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_explain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
+    api_key = _get_ai_key()
+    if not _has_ai():
         await update.effective_message.reply_text(
-            "⚠️ Gemini not configured.\nSet <code>GEMINI_API_KEY</code> on the server.",
+            "⚠️ AI not configured. Set GEMINI_API_KEY or GROQ_API_KEY in .env",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -579,11 +598,68 @@ async def cmd_explain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Week 11 — OCR: user sends a news article photo → classify extracted text."""
+    msg = update.effective_message
+    st: BotState = context.bot_data["state"]
+
+    await msg.reply_chat_action(action="typing")
+    await msg.reply_text(
+        "📸 <i>Photo received. Running OCR…</i>",
+        parse_mode=ParseMode.HTML,
+    )
+
+    # Download highest-resolution photo
+    photo = msg.photo[-1]
+    tg_file = await context.bot.get_file(photo.file_id)
+    buf = await tg_file.download_as_bytearray()
+    image_bytes = bytes(buf)
+
+    text, engine, error = extract_text_from_image(image_bytes)
+
+    if error or not text.strip():
+        err_msg = error or "Could not extract any text from this image."
+        await msg.reply_text(
+            f"⚠️ <b>OCR failed</b>\n{_esc(err_msg)}\n\n"
+            "<i>Tips: make sure the image is well-lit, not blurry, and contains readable text.</i>",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    wc = len(text.split())
+    await msg.reply_text(
+        f"✅ <b>OCR done</b>  <code>[{engine}]</code>\n"
+        f"Extracted <b>{wc:,}</b> words. Classifying…",
+        parse_mode=ParseMode.HTML,
+    )
+
+    await _run_predict_and_reply(msg, st, text, source="ocr")
+
+
+async def cmd_scanhelp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Usage hint for the photo/OCR feature."""
+    await update.effective_message.reply_text(
+        "📸 <b>Scan a news photo</b>\n"
+        f"{'─' * 28}\n\n"
+        "Just <b>send a photo</b> of a printed or on-screen news article "
+        "and the bot will:\n"
+        "  1. Extract the text with OCR\n"
+        "  2. Classify it as Fake or Real\n"
+        "  3. Show confidence + inline AI buttons\n\n"
+        "<b>Best results</b>\n"
+        "• Good lighting, no blur\n"
+        "• Article text clearly visible\n"
+        "• English text only\n"
+        "• Screenshot of a news website works great",
+        parse_mode=ParseMode.HTML,
+    )
+
+
 async def cmd_summarise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
+    api_key = _get_ai_key()
+    if not _has_ai():
         await update.effective_message.reply_text(
-            "⚠️ Gemini not configured.\nSet <code>GEMINI_API_KEY</code> on the server.",
+            "⚠️ AI not configured. Set GEMINI_API_KEY or GROQ_API_KEY in .env",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -631,10 +707,10 @@ async def cmd_summarise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
+    api_key = _get_ai_key()
+    if not _has_ai():
         await update.effective_message.reply_text(
-            "⚠️ Gemini not configured.\nSet <code>GEMINI_API_KEY</code> on the server.",
+            "⚠️ AI not configured. Set GEMINI_API_KEY or GROQ_API_KEY in .env",
             parse_mode=ParseMode.HTML,
         )
         return
@@ -713,9 +789,9 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
     elif data == "cb:explain":
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            await query.message.reply_text("⚠️ GEMINI_API_KEY not set on server.")
+        api_key = _get_ai_key()
+        if not _has_ai():
+            await query.message.reply_text("⚠️ AI not configured. Set GROQ_API_KEY or GEMINI_API_KEY in .env")
             return
         last_text = db_last_text(st.conn, query.message.chat_id)
         if not last_text:
@@ -746,9 +822,9 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
     elif data == "cb:summarise":
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            await query.message.reply_text("⚠️ GEMINI_API_KEY not set on server.")
+        api_key = _get_ai_key()
+        if not _has_ai():
+            await query.message.reply_text("⚠️ AI not configured. Set GROQ_API_KEY or GEMINI_API_KEY in .env")
             return
         last_text = db_last_text(st.conn, query.message.chat_id)
         if not last_text:
@@ -810,12 +886,15 @@ def main() -> None:
     app.add_handler(CommandHandler("help",      cmd_help))
     app.add_handler(CommandHandler("check",     cmd_check))
     app.add_handler(CommandHandler("url",       cmd_url))
+    app.add_handler(CommandHandler("scan",      cmd_scanhelp))
     app.add_handler(CommandHandler("history",   cmd_history))
     app.add_handler(CommandHandler("stats",     cmd_stats))
     app.add_handler(CommandHandler("explain",   cmd_explain))
     app.add_handler(CommandHandler("summarise", cmd_summarise))
     app.add_handler(CommandHandler("ask",       cmd_ask))
     app.add_handler(CallbackQueryHandler(on_button))
+    # Week 11 — photo OCR handler (catches all photos sent to the bot)
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
     webhook_base = os.getenv("TELEGRAM_WEBHOOK_URL")
     if webhook_base:
