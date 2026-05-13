@@ -38,7 +38,7 @@ from src.evaluate     import compare_models
 
 def run_pipeline() -> None:
     logger.info("=" * 60)
-    logger.info("  Fake News Detection — Week 1 Baseline Pipeline")
+    logger.info("  Fake News Detection — Baseline ML Pipeline")
     logger.info("=" * 60)
 
     # ── 1. Load Data ──────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def run_pipeline() -> None:
 
     save_model(best_model, vectorizer, best_name)
 
-    logger.info("Pipeline complete!  Week 1 baseline is ready.")
+    logger.info("Pipeline complete! Model files saved to models/")
     logger.info("=" * 60)
 
 

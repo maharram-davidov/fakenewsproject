@@ -9,7 +9,6 @@ Run:
 
 import sys
 import os
-import io
 import time
 import logging
 
@@ -826,14 +825,13 @@ with tab_batch:
                 predictions = []
                 confidences = []
                 progress_bar = st.progress(0, text="Starting…")
-                status_area  = st.empty()
                 total_rows   = len(df_input)
                 fake_b = real_b = skip_b = 0
 
-                for i, row in df_input.iterrows():
+                for row_idx, (_, row) in enumerate(df_input.iterrows(), start=1):
                     text = str(row.get(text_col, "") or "").strip()
-                    pct  = int(((list(df_input.index).index(i) + 1) / total_rows) * 100)
-                    progress_bar.progress(pct, text=f"Analysing row {list(df_input.index).index(i)+1} / {total_rows}…")
+                    pct  = int(row_idx / total_rows * 100)
+                    progress_bar.progress(pct, text=f"Analysing row {row_idx} / {total_rows}…")
 
                     if not text:
                         predictions.append("SKIPPED")
@@ -869,7 +867,7 @@ with tab_batch:
                 st.dataframe(
                     df_output[["prediction", "confidence_%"] + [text_col]]
                     .head(20)
-                    .style.applymap(
+                    .style.map(
                         lambda v: "color:#EF476F;font-weight:700" if v == "FAKE"
                                   else ("color:#06D6A0;font-weight:700" if v == "REAL" else ""),
                         subset=["prediction"],
@@ -1157,7 +1155,8 @@ with tab_gem:
             disabled=not api_k,
         )
 
-    text_for_explain = (st.session_state.last_text or "").strip() or article_ctx.strip()
+    # Prefer what the user explicitly pasted in the Gemini tab; fall back to last ML text
+    text_for_explain = article_ctx.strip() or (st.session_state.last_text or "").strip()
 
     if do_explain and api_k:
         if not text_for_explain:

@@ -52,6 +52,15 @@ logs/
 tmp/
 temp/
 
+# ── Generated report / presentation artefacts ─────────────────────────────────
+# Keep source scripts; ignore generated output files
+*.docx
+*.pptx
+models/*.png
+
+# ── Streamlit secrets ─────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
 # ── Distribution / packaging ──────────────────────────────────────────────────
 dist/
 build/

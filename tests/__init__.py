@@ -1,1 +1,1 @@
-# Tests package for capstone Week 7
+# Tests package — AI-Based Fake News Detection System
